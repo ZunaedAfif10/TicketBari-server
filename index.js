@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express()
 const port = 5000
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 
 app.use(cors());
@@ -36,8 +36,17 @@ async function run() {
     app.get('/api/tickets', async (req, res) => {
       const cursor = ticketCollection.find();
       const companies = await cursor.toArray();
-      console.log(companies);
+      // console.log(companies);
       res.send(companies)
+    })
+
+    app.get('/api/tickets/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id)
+      }
+      const cursor = await ticketCollection.findOne(query);
+      res.send(cursor);
     })
 
     // Send a ping to confirm a successful connection
