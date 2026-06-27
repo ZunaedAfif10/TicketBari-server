@@ -5,7 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 
 app.use(cors());
-// app.use(express.json());
+app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
@@ -31,6 +31,7 @@ async function run() {
 
     const database = client.db("ticketbari");
     const ticketCollection = database.collection("tickets");
+    const bookingCollection = database.collection("bookings");
 
 
     app.get('/api/tickets', async (req, res) => {
@@ -40,6 +41,7 @@ async function run() {
       res.send(companies)
     })
 
+
     app.get('/api/tickets/:id', async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -47,6 +49,47 @@ async function run() {
       }
       const cursor = await ticketCollection.findOne(query);
       res.send(cursor);
+    })
+
+    app.get('/api/bookings', async (req, res) => {
+      const matchStage = {};
+      if (req.query.userId && req.query.userId !== "undefined") {
+        matchStage.userId = req.query.userId;
+      }
+
+      const bookings = await bookingCollection.aggregate([
+        { $match: matchStage },
+
+        {
+          $addFields: {
+            ticketId: { $toObjectId: "$ticketId" }
+          }
+        },
+
+        {
+          $lookup: {
+            from: "tickets",
+            localField: "ticketId",
+            foreignField: "_id",
+            as: "ticketId"
+          }
+        },
+
+        { $unwind: "$ticketId" }
+      ]).toArray();
+
+      res.json(bookings);
+    })
+
+    app.post('/api/bookings', async (req, res) => {
+      const book = req.body;
+      console.log(book);
+      const booking = {
+        ...book,
+        createdAt: new Date()
+      }
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
     })
 
     // Send a ping to confirm a successful connection
