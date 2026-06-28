@@ -38,7 +38,7 @@ async function run() {
     app.get('/api/users', async (req, res) => {
       const cursor = userCollection.find();
       const users = await cursor.toArray();
-  
+
       res.send(users)
     })
 
@@ -46,7 +46,7 @@ async function run() {
     app.get('/api/tickets', async (req, res) => {
       if (req.query.email) {
         const email = req.query.email;
-        console.log(req.query.email)
+        // console.log(req.query.email)
         const query = {
           vendorEmail: email
         }
@@ -83,6 +83,20 @@ async function run() {
       }
       // console.log(ticket)
       const result = await ticketCollection.insertOne(ticket);
+      res.send(result);
+    })
+
+    app.patch('/api/tickets/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedTicket = req.body;
+      // console.log(updatedTicket)
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          status: updatedTicket.status
+        }
+      }
+      const result = await ticketCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
 
