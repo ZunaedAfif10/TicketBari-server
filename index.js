@@ -35,10 +35,23 @@ async function run() {
 
 
     app.get('/api/tickets', async (req, res) => {
-      const cursor = ticketCollection.find();
-      const companies = await cursor.toArray();
-      // console.log(companies);
-      res.send(companies)
+      if (req.query.email) {
+        const email = req.query.email;
+        console.log(req.query.email)
+        const query = {
+          vendorEmail: email
+        }
+        const cursor = await ticketCollection.find(query);
+        const tickets = await cursor.toArray();
+        // console.log(cursor)
+        res.send(tickets);
+      }
+      else {
+        const cursor = ticketCollection.find();
+        const tickets = await cursor.toArray();
+        // console.log(companies);
+        res.send(tickets)
+      }
     })
 
 
@@ -49,6 +62,27 @@ async function run() {
       }
       const cursor = await ticketCollection.findOne(query);
       res.send(cursor);
+    })
+
+    app.get('/api/tickets/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        vendorEmail: email
+      }
+      const cursor = await ticketCollection.findOne(query);
+      res.send(cursor);
+    })
+
+    app.post('/api/tickets', async (req, res) => {
+      const ticketBody = req.body;
+      // console.log(ticket);
+      const ticket = {
+        ...ticketBody,
+        createdAt: new Date()
+      }
+      // console.log(ticket)
+      const result = await ticketCollection.insertOne(ticket);
+      res.send(result);
     })
 
     app.get('/api/bookings', async (req, res) => {
@@ -83,7 +117,7 @@ async function run() {
 
     app.post('/api/bookings', async (req, res) => {
       const book = req.body;
-      console.log(book);
+      // console.log(book);
       const booking = {
         ...book,
         createdAt: new Date()
@@ -91,6 +125,7 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
