@@ -42,6 +42,22 @@ async function run() {
       res.send(users)
     })
 
+    app.patch('/api/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedUser = req.body;
+      // console.log(updatedUser , id)
+      
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          role: updatedUser.role
+        }
+      }
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      // console.log(result)
+      res.send(result);
+    })
+
 
     app.get('/api/tickets', async (req, res) => {
       if (req.query.email) {
@@ -99,6 +115,23 @@ async function run() {
       const result = await ticketCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
+
+    app.patch('/api/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedBooking = req.body;
+      
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          status: updatedBooking.status
+        }
+      }
+      const result = await bookingCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    })
+
+
+    
 
     app.get('/api/bookings', async (req, res) => {
       try {
