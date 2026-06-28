@@ -32,6 +32,15 @@ async function run() {
     const database = client.db("ticketbari");
     const ticketCollection = database.collection("tickets");
     const bookingCollection = database.collection("bookings");
+    const userCollection = database.collection("user");
+
+
+    app.get('/api/users', async (req, res) => {
+      const cursor = userCollection.find();
+      const users = await cursor.toArray();
+  
+      res.send(users)
+    })
 
 
     app.get('/api/tickets', async (req, res) => {
