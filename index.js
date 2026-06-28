@@ -64,14 +64,6 @@ async function run() {
       res.send(cursor);
     })
 
-    app.get('/api/tickets/:email', async (req, res) => {
-      const email = req.params.email;
-      const query = {
-        vendorEmail: email
-      }
-      const cursor = await ticketCollection.findOne(query);
-      res.send(cursor);
-    })
 
     app.post('/api/tickets', async (req, res) => {
       const ticketBody = req.body;
@@ -86,34 +78,55 @@ async function run() {
     })
 
     app.get('/api/bookings', async (req, res) => {
-      const matchStage = {};
-      if (req.query.userId && req.query.userId !== "undefined") {
-        matchStage.userId = req.query.userId;
+      try {
+        const { userId, vendorEmail } = req.query;
+
+        if (!userId && !vendorEmail) {
+          return res.status(400).json({ error: "Missing identity filter parameters." });
+        }
+
+        const matchStage = {};
+
+        if (userId && userId !== "undefined") {
+          matchStage.userId = userId;
+        }
+
+        const pipeline = [
+
+          { $match: matchStage },
+
+          {
+            $addFields: {
+              ticketId: { $toObjectId: "$ticketId" }
+            }
+          },
+
+          {
+            $lookup: {
+              from: "tickets",
+              localField: "ticketId",
+              foreignField: "_id",
+              as: "ticketId"
+            }
+          },
+          { $unwind: "$ticketId" }
+
+        ];
+
+        if (vendorEmail && vendorEmail !== "undefined") {
+          pipeline.push({
+            $match: { "ticketId.vendorEmail": vendorEmail }
+          });
+        }
+
+        const bookings = await bookingCollection.aggregate(pipeline).toArray();
+        res.json(bookings);
+
+      } catch (error) {
+        console.error("Aggregation pipeline breakdown:", error);
+        res.status(500).json({ error: "Internal Server Error" });
       }
-
-      const bookings = await bookingCollection.aggregate([
-        { $match: matchStage },
-
-        {
-          $addFields: {
-            ticketId: { $toObjectId: "$ticketId" }
-          }
-        },
-
-        {
-          $lookup: {
-            from: "tickets",
-            localField: "ticketId",
-            foreignField: "_id",
-            as: "ticketId"
-          }
-        },
-
-        { $unwind: "$ticketId" }
-      ]).toArray();
-
-      res.json(bookings);
-    })
+    });
 
     app.post('/api/bookings', async (req, res) => {
       const book = req.body;
