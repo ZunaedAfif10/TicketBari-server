@@ -46,7 +46,7 @@ async function run() {
       const id = req.params.id;
       const updatedUser = req.body;
       // console.log(updatedUser , id)
-      
+
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
@@ -79,6 +79,16 @@ async function run() {
       }
     })
 
+    app.get('/api/approved-tickets', async (req, res) => {
+      const query = {
+        status: 'approved'
+      }
+      const cursor = ticketCollection.find(query);
+      const tickets = await cursor.toArray();
+      // console.log(companies);
+      res.send(tickets)
+    })
+
 
     app.get('/api/tickets/:id', async (req, res) => {
       const id = req.params.id;
@@ -104,22 +114,33 @@ async function run() {
 
     app.patch('/api/tickets/:id', async (req, res) => {
       const id = req.params.id;
-      const updatedTicket = req.body;
+      const { _id, ...allowedUpdates } = req.body;
       // console.log(updatedTicket)
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
-          status: updatedTicket.status
+          ...allowedUpdates
         }
       }
       const result = await ticketCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
 
+
+    app.delete('/api/tickets/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const filter = { _id: new ObjectId(id) };
+      const result = await ticketCollection.deleteOne(filter);
+      res.send(result);
+    });
+
+
+
     app.patch('/api/bookings/:id', async (req, res) => {
       const id = req.params.id;
       const updatedBooking = req.body;
-      
+
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
@@ -131,7 +152,7 @@ async function run() {
     })
 
 
-    
+
 
     app.get('/api/bookings', async (req, res) => {
       try {
