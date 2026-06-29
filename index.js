@@ -27,7 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("ticketbari");
     const ticketCollection = database.collection("tickets");
@@ -36,6 +36,8 @@ async function run() {
     const paymentCollection = database.collection("payments");
     const sellingCollection = database.collection("sellings");
 
+
+    // users
 
     app.get('/api/users', async (req, res) => {
       const cursor = userCollection.find();
@@ -50,16 +52,70 @@ async function run() {
       // console.log(updatedUser , id)
 
       const filter = { _id: new ObjectId(id) }
+      if (updatedUser.role) {
+
+        const updatedDoc = {
+          $set: {
+            role: updatedUser.role
+          }
+        }
+
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        // console.log(result)
+        res.send(result);
+      }
+      else {
+        const updatedDoc = {
+          $set: {
+            status: updatedUser.status
+          }
+        }
+        if (updatedUser.status === 'fraud') {
+          await ticketCollection.deleteMany({ vendorId: id });
+        }
+
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        // console.log(result)
+        res.send(result);
+      }
+    })
+
+
+    // advertise
+
+    app.get('/api/advertise', async (req, res) => {
+      const cursor = ticketCollection.find({ isAdvertised: true });
+      const tickets = await cursor.toArray();
+      // console.log(tickets)
+      res.send(tickets)
+    })
+
+    app.patch('/api/advertise/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedAdvertise = req.body;
+      // console.log(updatedAdvertise);
+      const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
-          role: updatedUser.role
+          isAdvertised: updatedAdvertise.isAdvertised
         }
       }
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      // console.log(result)
+      const result = await ticketCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
 
+    // tickets
+    app.get('/api/latest-tickets', async (req, res) => {
+      try {
+        const cursor = ticketCollection.find().sort({ createdAt: -1 }).limit(8);
+
+        const tickets = await cursor.toArray();
+        res.send(tickets);
+      } catch (error) {
+        // console.error("Error fetching latest tickets:", error);
+        res.status(500).send({ message: "Failed to retrieve latest tickets" });
+      }
+    });
 
     app.get('/api/tickets', async (req, res) => {
       if (req.query.email) {
@@ -76,7 +132,7 @@ async function run() {
       else {
         const cursor = ticketCollection.find();
         const tickets = await cursor.toArray();
-        // console.log(companies);
+
         res.send(tickets)
       }
     })
@@ -87,7 +143,7 @@ async function run() {
       }
       const cursor = ticketCollection.find(query);
       const tickets = await cursor.toArray();
-      // console.log(companies);
+
       res.send(tickets)
     })
 
@@ -137,7 +193,7 @@ async function run() {
       res.send(result);
     });
 
-
+    // bookings
 
     app.patch('/api/bookings/:id', async (req, res) => {
       const id = req.params.id;
@@ -218,19 +274,34 @@ async function run() {
       res.send(result);
     })
 
-    app.get('/api/payments', async (req, res) => {
-      if (req.query.email) {
-        const email = req.query.email;
-        // console.log(req.query.email)
-        const query = {
-          userEmail: email
-        }
-        const cursor = await paymentCollection.find(query);
-        const payment = await cursor.toArray();
-        // console.log(cursor)
-        res.send(payment);
+
+    // payments
+
+    app.get('/api/sellings', async (req, res) => {
+      const email = req.query.email;
+      // console.log(req.query.email)
+      const query = {
+        vendorEmail: email
       }
+      const cursor = await sellingCollection.find(query);
+      const selling = await cursor.toArray();
+      // console.log(cursor)
+      res.send(selling);
     })
+
+    app.get('/api/payments', async (req, res) => {
+      const email = req.query.email;
+      // console.log(req.query.email)
+      const query = {
+        userEmail: email
+      }
+      const cursor = await paymentCollection.find(query);
+      const payment = await cursor.toArray();
+      // console.log(cursor)
+      res.send(payment);
+    })
+
+
 
     app.post('/api/payments', async (req, res) => {
       const { userId, amount, bookingId, ticketId, ticketTitle, vendorEmail, quantity, email, transactionId, paymentStatus } = req.body;
@@ -285,7 +356,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
