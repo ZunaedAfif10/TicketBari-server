@@ -33,6 +33,8 @@ async function run() {
     const ticketCollection = database.collection("tickets");
     const bookingCollection = database.collection("bookings");
     const userCollection = database.collection("user");
+    const paymentCollection = database.collection("payments");
+    const sellingCollection = database.collection("sellings");
 
 
     app.get('/api/users', async (req, res) => {
@@ -129,7 +131,7 @@ async function run() {
 
     app.delete('/api/tickets/:id', async (req, res) => {
       const id = req.params.id;
-
+      // console.log(id)
       const filter = { _id: new ObjectId(id) };
       const result = await ticketCollection.deleteOne(filter);
       res.send(result);
@@ -215,6 +217,71 @@ async function run() {
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     })
+
+    app.get('/api/payments', async (req, res) => {
+      if (req.query.email) {
+        const email = req.query.email;
+        // console.log(req.query.email)
+        const query = {
+          userEmail: email
+        }
+        const cursor = await paymentCollection.find(query);
+        const payment = await cursor.toArray();
+        // console.log(cursor)
+        res.send(payment);
+      }
+    })
+
+    app.post('/api/payments', async (req, res) => {
+      const { userId, amount, bookingId, ticketId, ticketTitle, vendorEmail, quantity, email, transactionId, paymentStatus } = req.body;
+      // console.log(req.body);
+      const sellingData = {
+        ticketId: ticketId,
+        ticketTitle: ticketTitle,
+        attendeeEmail: email,
+        vendorEmail: vendorEmail,
+        quantity,
+        amount,
+        transactionId,
+        paymentStatus,
+        bookingDate: new Date(),
+      };
+      const isSellingExist = await sellingCollection.findOne({ transactionId });
+      if (isSellingExist) {
+        return res.status(200).send({ message: 'Already paid' });
+      }
+      const sellingRes = await sellingCollection.insertOne(sellingData);
+
+      await ticketCollection.updateOne(
+        { _id: new ObjectId(ticketId) },
+        {
+          $inc: {
+            quantity: -quantity,
+          },
+        }
+      );
+      // console.log(bookingId)
+      await bookingCollection.updateOne(
+        { _id: new ObjectId(bookingId) },
+        {
+          $set: {
+            status: 'paid',
+          },
+        }
+      );
+      const paymentData = {
+        userEmail: email,
+        amount,
+        ticketTitle,
+        transactionId,
+        paymentStatus,
+        paidAt: new Date(),
+      };
+      // console.log(sellingData,paymentData)
+
+      await paymentCollection.insertOne(paymentData);
+      res.send(sellingRes);
+    });
 
 
     // Send a ping to confirm a successful connection
